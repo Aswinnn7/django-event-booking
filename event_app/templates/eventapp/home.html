@@ -1,0 +1,435 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Discover events | EventBooking{% endblock %}
+
+{% block extra_css %}
+    /* Homepage introduction */
+    .hero {
+        padding: 44px;
+        margin-bottom: 32px;
+        border: 1px solid #ddd9fa;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #eeebff, #f0f7ff);
+    }
+
+    .eyebrow {
+        margin: 0 0 12px;
+        color: var(--primary);
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .hero h1 {
+        max-width: 700px;
+        margin: 0 0 16px;
+    }
+
+    .hero-description {
+        max-width: 560px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.1rem;
+    }
+
+    /* Search and filter controls */
+    .search-form {
+        margin-top: 28px;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+    }
+
+    .filter-field {
+        min-width: 0;
+    }
+
+    .filter-field .errorlist {
+        margin: 8px 0;
+    }
+
+    .search-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    /* Event lists */
+    .section-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .section-heading h2,
+    .section-heading p {
+        margin: 0;
+    }
+
+    /* Space between suggestions and the main event list */
+    .recommendations {
+        margin-bottom: 40px;
+    }
+
+    .recommendation-description {
+        margin: -8px 0 20px;
+        color: var(--muted);
+    }
+
+    .event-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .event-card {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        border-top: 4px solid var(--primary);
+    }
+
+    .event-date {
+        margin: 0 0 16px;
+        color: var(--primary);
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .event-card h3 {
+        margin: 0 0 12px;
+        font-size: 1.4rem;
+    }
+
+    .event-title {
+        color: var(--text);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+    .event-title:hover {
+        color: var(--primary);
+        text-decoration: underline;
+    }
+
+    .event-location {
+        margin: 0 0 12px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    .event-description {
+        margin: 0 0 24px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    .event-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+    }
+
+    .event-price {
+        font-size: 1.1rem;
+        font-weight: 800;
+    }
+
+    .price-label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 400;
+    }
+
+    /* Empty results and pagination */
+    .empty-state {
+        padding: 48px 24px;
+        text-align: center;
+    }
+
+    .empty-state h3 {
+        margin-top: 0;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 32px;
+    }
+
+    @media (max-width: 900px) {
+        .event-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .hero {
+            padding: 28px 20px;
+        }
+
+        .filter-grid,
+        .event-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .search-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <!-- Introduction, search and filters -->
+    <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">Discover. Connect. Experience.</p>
+
+        <h1 id="hero-title">{{ page_title }}</h1>
+
+        <p class="hero-description">
+            Find workshops, live music, and local gatherings.
+            Your next experience starts here.
+        </p>
+
+        <!-- GET puts the selected filters in the URL. -->
+        <form class="search-form" method="GET" action="{% url 'home' %}">
+            <label for="search">Find an event</label>
+
+            <input
+                id="search"
+                type="search"
+                name="search"
+                placeholder="Search by event name"
+                value="{{ search }}"
+            >
+
+            <!-- Display errors affecting the whole filter form. -->
+            {{ filter_form.non_field_errors }}
+
+            <div class="filter-grid">
+                {% for field in filter_form %}
+                    <div class="filter-field">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="search-controls">
+                <button type="submit">Search events</button>
+
+                <!-- Opening home without parameters clears filters. -->
+                <a
+                    class="button button-secondary"
+                    href="{% url 'home' %}"
+                >
+                    Clear filters
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <!-- Hide this section when there are no suggestions. -->
+    {% if recommended_events %}
+        <section
+            class="recommendations"
+            aria-labelledby="recommendations-heading"
+        >
+            <div class="section-heading">
+                <h2 id="recommendations-heading">Suggested events</h2>
+            </div>
+
+            <!-- Neutral wording also fits users without booking history. -->
+            <p class="recommendation-description">
+                Discover an upcoming event you might enjoy.
+            </p>
+
+            <div class="event-grid">
+                {% for event in recommended_events %}
+                    <article class="card event-card">
+                        <p class="event-date">
+                            <time datetime="{{ event.starts_at|date:'c' }}">
+                                {{ event.starts_at|date:"d M Y" }}
+                                · {{ event.starts_at|date:"g:i A" }}
+                            </time>
+                        </p>
+
+                        <h3>
+                            <a
+                                class="event-title"
+                                href="{% url 'event_detail' event.pk %}"
+                            >
+                                {{ event.title }}
+                            </a>
+                        </h3>
+
+                        <p class="event-location">
+                            <strong>Location:</strong> {{ event.location }}
+                        </p>
+
+                        <p class="event-description">
+                            {{ event.description|truncatewords:22 }}
+                        </p>
+
+                        <div class="event-card-footer">
+                            <div class="event-price">
+                                {% if event.ticket_price == 0 %}
+                                    Free
+                                {% else %}
+                                    ₹{{ event.ticket_price|floatformat:2 }}
+                                    <span class="price-label">per ticket</span>
+                                {% endif %}
+                            </div>
+
+                            <a
+                                class="button button-secondary"
+                                href="{% url 'event_detail' event.pk %}"
+                                aria-label="View {{ event.title }}"
+                            >
+                                View event
+                            </a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    <!-- Main event list and search results -->
+    <section aria-labelledby="events-heading">
+        <div class="section-heading">
+            <h2 id="events-heading">
+                {% if search %}
+                    Results for “{{ search }}”
+                {% else %}
+                    Explore events
+                {% endif %}
+            </h2>
+
+            <p class="muted">
+                {{ page_obj.paginator.count }}
+                event{{ page_obj.paginator.count|pluralize }}
+            </p>
+        </div>
+
+        {% if filter_form.errors %}
+            <div class="alert alert-error" role="alert">
+                Please correct the filter errors above and search again.
+            </div>
+
+        {% elif page_obj %}
+            <div class="event-grid">
+                {% for event in page_obj %}
+                    <article class="card event-card">
+                        <p class="event-date">
+                            <time datetime="{{ event.starts_at|date:'c' }}">
+                                {{ event.starts_at|date:"d M Y" }}
+                                · {{ event.starts_at|date:"g:i A" }}
+                            </time>
+                        </p>
+
+                        <h3>
+                            <a
+                                class="event-title"
+                                href="{% url 'event_detail' event.pk %}"
+                            >
+                                {{ event.title }}
+                            </a>
+                        </h3>
+
+                        <p class="event-location">
+                            <strong>Location:</strong> {{ event.location }}
+                        </p>
+
+                        <p class="event-description">
+                            {{ event.description|truncatewords:22 }}
+                        </p>
+
+                        <div class="event-card-footer">
+                            <div class="event-price">
+                                {% if event.ticket_price == 0 %}
+                                    Free
+                                {% else %}
+                                    ₹{{ event.ticket_price|floatformat:2 }}
+                                    <span class="price-label">per ticket</span>
+                                {% endif %}
+                            </div>
+
+                            <a
+                                class="button button-secondary"
+                                href="{% url 'event_detail' event.pk %}"
+                                aria-label="View {{ event.title }}"
+                            >
+                                View event
+                            </a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+
+        {% else %}
+            <div class="card empty-state">
+                <h3>No events found</h3>
+
+                <p class="muted">
+                    Try another search or clear the filters to see all events.
+                </p>
+
+                <a
+                    class="button button-secondary"
+                    href="{% url 'home' %}"
+                >
+                    Clear filters
+                </a>
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- Preserve selected filters when changing pages. -->
+    {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="pagination" aria-label="Event pages">
+            {% if page_obj.has_previous %}
+                <a
+                    class="button button-secondary"
+                    href="?{{ filter_query }}&amp;page={{ page_obj.previous_page_number }}"
+                >
+                    Previous
+                </a>
+            {% endif %}
+
+            <span class="muted">
+                Page {{ page_obj.number }}
+                of {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a
+                    class="button button-secondary"
+                    href="?{{ filter_query }}&amp;page={{ page_obj.next_page_number }}"
+                >
+                    Next
+                </a>
+            {% endif %}
+        </nav>
+    {% endif %}
+{% endblock %}

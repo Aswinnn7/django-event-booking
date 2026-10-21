@@ -1,0 +1,74 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Log in | EventBooking{% endblock %}
+
+{% block extra_css %}
+    .auth-card {
+        margin-top: 24px;
+        border-top: 4px solid var(--primary);
+    }
+
+    .auth-card h1 {
+        margin: 0 0 12px;
+        font-size: 2.2rem;
+    }
+
+    .auth-intro {
+        margin-bottom: 28px;
+        color: var(--muted);
+    }
+
+    .auth-form p {
+        margin-bottom: 20px;
+    }
+
+    .auth-form button {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .auth-footer {
+        margin-top: 28px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        text-align: center;
+    }
+
+    .auth-back {
+        margin-bottom: 0;
+        text-align: center;
+    }
+{% endblock %}
+
+{% block content %}
+    <section class="card form-card auth-card" aria-labelledby="login-title">
+        <h1 id="login-title">Welcome back</h1>
+
+        <p class="auth-intro">
+            Log in to book events and manage your reservations.
+        </p>
+
+        <form class="auth-form" method="POST">
+            {% csrf_token %}
+
+            <!-- Preserve the page requested before login. -->
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <!-- Display login fields and validation errors. -->
+            {{ form.as_p }}
+
+            <button type="submit">Log in</button>
+        </form>
+
+        <div class="auth-footer">
+            <p>
+                Don't have an account?
+                <a href="{% url 'register' %}">Create an account</a>
+            </p>
+
+            <p class="auth-back">
+                <a href="{% url 'home' %}">Back to events</a>
+            </p>
+        </div>
+    </section>
+{% endblock %}

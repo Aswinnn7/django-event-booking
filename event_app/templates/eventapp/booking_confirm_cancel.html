@@ -1,0 +1,90 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Cancel booking | EventBooking{% endblock %}
+
+{% block extra_css %}
+    .confirmation-card {
+        margin-top: 24px;
+        border-top: 4px solid var(--danger);
+    }
+
+    .confirmation-card h1 {
+        margin: 0 0 20px;
+        font-size: 2rem;
+    }
+
+    .confirmation-summary {
+        padding: 18px;
+        margin: 24px 0;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--background);
+        overflow-wrap: anywhere;
+    }
+
+    .confirmation-summary p {
+        margin: 6px 0;
+    }
+
+    .confirmation-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    @media (max-width: 480px) {
+        .confirmation-actions > * {
+            width: 100%;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <section class="card form-card confirmation-card">
+        <h1>Cancel booking</h1>
+
+        {% if error %}
+            <!-- Show why cancellation was blocked. -->
+            <p class="alert alert-error" role="alert">
+                {{ error }}
+            </p>
+
+            <a
+                class="button button-secondary"
+                href="{% url 'my_bookings' %}"
+            >
+                Back to my bookings
+            </a>
+        {% else %}
+            <p class="muted">
+                Are you sure you want to cancel this reservation?
+                Your reserved seats will become available again.
+            </p>
+
+            <div class="confirmation-summary">
+                <p><strong>{{ booking.event.title }}</strong></p>
+                <p>Booking #{{ booking.pk }}</p>
+                <p>Tickets: {{ booking.quantity }}</p>
+            </div>
+
+            <!-- Cancellation happens only after submitting this form. -->
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="confirmation-actions">
+                    <button class="button-danger" type="submit">
+                        Yes, cancel booking
+                    </button>
+
+                    <a
+                        class="button button-secondary"
+                        href="{% url 'my_bookings' %}"
+                    >
+                        Keep booking
+                    </a>
+                </div>
+            </form>
+        {% endif %}
+    </section>
+{% endblock %}

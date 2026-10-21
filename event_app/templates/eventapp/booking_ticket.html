@@ -1,0 +1,120 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Your ticket | EventBooking{% endblock %}
+
+{% block extra_css %}
+    .ticket-card {
+        border-top: 4px solid var(--primary);
+    }
+
+    .ticket-card h1 {
+        margin-top: 0;
+        font-size: 2rem;
+    }
+
+    .ticket-details {
+        margin: 24px 0;
+    }
+
+    .ticket-details dt {
+        margin-top: 16px;
+        color: var(--muted);
+    }
+
+    .ticket-details dd {
+        margin: 4px 0 0;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    /* Keep the QR readable on smaller screens. */
+    .ticket-qr {
+        margin: 24px 0;
+        text-align: center;
+    }
+
+    .ticket-qr img {
+        display: block;
+        width: 260px;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+    }
+{% endblock %}
+
+{% block content %}
+    <section class="card form-card ticket-card">
+        <h1>Your event ticket</h1>
+        <h2>{{ booking.event.title }}</h2>
+
+        <!-- Display the current booking and check-in status. -->
+        {% if booking.status == "cancelled" %}
+            <p class="alert alert-error">
+                This booking is cancelled. This ticket cannot be used.
+            </p>
+        {% elif booking.status != "confirmed" %}
+            <p class="alert">
+                This booking is not confirmed. This ticket cannot be used.
+            </p>
+        {% elif booking.checked_in_at %}
+            <p class="alert">
+                Already checked in:
+                {{ booking.checked_in_at|date:"d M Y, g:i A T" }}
+            </p>
+        {% else %}
+            <p class="alert">Confirmed — not checked in yet.</p>
+        {% endif %}
+
+        <!-- Show the QR only for a confirmed booking awaiting check-in. -->
+        {% if booking.status == "confirmed" and not booking.checked_in_at %}
+            <div class="ticket-qr">
+                <img
+                    src="{% url 'booking_ticket_qr' booking.pk %}"
+                    alt="QR ticket code for booking {{ booking.pk }}"
+                    width="260"
+                    height="260"
+                >
+
+                <p class="muted">
+                    Show this QR code to the organizer at entry.
+                    It covers all {{ booking.quantity }} tickets
+                    in this booking.
+                </p>
+            </div>
+        {% endif %}
+
+        <dl class="ticket-details">
+            <dt>Booking reference</dt>
+            <dd>#{{ booking.pk }}</dd>
+
+            <dt>Booked by</dt>
+            <dd>{{ booking.user.username }}</dd>
+
+            <dt>Location</dt>
+            <dd>{{ booking.event.location }}</dd>
+
+            <dt>Date and time</dt>
+            <dd>
+                {{ booking.event.starts_at|date:"d M Y, g:i A T" }}
+            </dd>
+
+            <dt>Number of tickets</dt>
+            <dd>{{ booking.quantity }}</dd>
+
+            <dt>Ticket code</dt>
+            <dd>{{ booking.ticket_code }}</dd>
+        </dl>
+
+        <p class="muted">
+            One ticket code covers everyone in this booking.
+            Please arrive together for check-in.
+        </p>
+
+        <a
+            class="button button-secondary"
+            href="{% url 'my_bookings' %}"
+        >
+            Back to my bookings
+        </a>
+    </section>
+{% endblock %}

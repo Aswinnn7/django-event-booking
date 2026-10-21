@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}Event Booking{% endblock %}</title>
+
+    <style>
+        /* Shared colours and sizing */
+        :root {
+            --background: #f5f7fb;
+            --surface: #ffffff;
+            --text: #172033;
+            --muted: #596579;
+            --primary: #4338ca;
+            --primary-dark: #3730a3;
+            --border: #dce2ec;
+            --danger: #b42318;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--background);
+            color: var(--text);
+            font-family: "Segoe UI", Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        a {
+            color: var(--primary);
+            text-underline-offset: 3px;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font: inherit;
+        }
+
+        /* Visible keyboard focus */
+        :focus-visible {
+            outline: 3px solid #a16207;
+            outline-offset: 4px;
+        }
+
+        .skip-link {
+            position: absolute;
+            left: 16px;
+            top: -100px;
+            padding: 10px 16px;
+            background: var(--surface);
+            z-index: 10;
+        }
+
+        .skip-link:focus {
+            top: 12px;
+        }
+
+        /* Shared navigation */
+        .site-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .navbar {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 18px;
+        }
+
+        .brand {
+            color: var(--text);
+            font-size: 1.3rem;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .brand span {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .nav-links > a:not(.button) {
+            color: var(--text);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .nav-links > a:hover {
+            text-decoration: underline;
+        }
+
+        .nav-user {
+            color: var(--muted);
+            overflow-wrap: anywhere;
+        }
+
+        .logout-form {
+            margin: 0;
+        }
+
+        /* Page structure */
+        .container {
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 40px 24px 64px;
+            flex: 1;
+        }
+
+        h1,
+        h2,
+        h3 {
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.4rem);
+            letter-spacing: -0.04em;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        /* Reusable buttons */
+        .button,
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 10px 18px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            background: var(--primary);
+            color: #ffffff;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .button:hover,
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        .button-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .button-secondary:hover {
+            background: #edf0f7;
+        }
+
+        .button-danger {
+            background: var(--danger);
+        }
+
+        .button-danger:hover {
+            background: #912018;
+        }
+
+        /* Reusable cards and forms */
+        .card {
+            padding: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(23, 32, 51, 0.04);
+        }
+
+        .form-card {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+        textarea,
+        select {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 12px;
+            border: 1px solid #aab4c4;
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        .helptext {
+            display: block;
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .errorlist {
+            color: var(--danger);
+            padding-left: 22px;
+        }
+
+        .alert {
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+        }
+
+        .alert-error {
+            border-color: #f3b8b2;
+            background: #fff1f0;
+            color: var(--danger);
+        }
+
+        /* Shared footer */
+        .site-footer {
+            padding: 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        /* Smaller screens */
+        @media (max-width: 640px) {
+            .navbar {
+                padding: 16px;
+            }
+
+            .nav-links {
+                width: 100%;
+                gap: 12px;
+            }
+
+            .container {
+                padding: 28px 16px 48px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+
+        /* Individual pages can add their own styles. */
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+
+<body>
+    <a class="skip-link" href="#main-content">
+        Skip to content
+    </a>
+
+    <header class="site-header">
+        <nav class="navbar" aria-label="Main navigation">
+            <a class="brand" href="{% url 'home' %}">
+                Event<span>Booking</span>
+            </a>
+
+            <div class="nav-links">
+                <a href="{% url 'home' %}">Explore events</a>
+
+                {% if user.is_authenticated %}
+                    <a href="{% url 'my_bookings' %}">
+                        My bookings
+                    </a>
+
+                    <!-- Show the organizer dashboard link after login. -->
+                    <a href="{% url 'organizer_dashboard' %}">
+                        Organizer dashboard
+                    </a>
+
+                    <a class="button" href="{% url 'event_create' %}">
+                        Create event
+                    </a>
+
+                    <span class="nav-user">
+                        Hi, {{ user.username }}
+                    </span>
+
+                    <!-- Logout uses a protected POST request. -->
+                    <form
+                        class="logout-form"
+                        method="POST"
+                        action="{% url 'logout' %}"
+                    >
+                        {% csrf_token %}
+                        <button class="button-secondary" type="submit">
+                            Logout
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}">Login</a>
+
+                    <a class="button" href="{% url 'register' %}">
+                        Create account
+                    </a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+    <main id="main-content" class="container">
+        <!-- Display messages provided by Django views. -->
+        {% if messages %}
+            <div aria-live="polite">
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Each page inserts its content here. -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        &copy; {% now "Y" %} EventBooking.
+        Discover events. Make memories.
+    </footer>
+</body>
+</html>

@@ -1,0 +1,262 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}My bookings | EventBooking{% endblock %}
+
+{% block extra_css %}
+    .bookings-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+
+    .bookings-heading h1 {
+        margin: 0 0 10px;
+        font-size: clamp(2rem, 4vw, 3rem);
+    }
+
+    .bookings-heading p {
+        margin: 0;
+        color: var(--muted);
+    }
+
+    .booking-list {
+        display: grid;
+        gap: 20px;
+    }
+
+    .booking-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .booking-reference {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 0.85rem;
+    }
+
+    .booking-card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+    }
+
+    .booking-card h2 a {
+        color: var(--text);
+        text-decoration: none;
+    }
+
+    .booking-card h2 a:hover {
+        color: var(--primary);
+        text-decoration: underline;
+    }
+
+    /* Status labels use text as well as colour. */
+    .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        background: #eef1f6;
+        color: #465267;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .status-confirmed {
+        background: #e6f5ed;
+        color: #166534;
+    }
+
+    .status-cancelled {
+        background: #fff1f0;
+        color: #a32424;
+    }
+
+    .booking-details {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+        margin: 0;
+    }
+
+    .booking-details dt {
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .booking-details dd {
+        margin: 0;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .booking-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+    }
+
+    .empty-bookings {
+        padding: 48px 24px;
+        text-align: center;
+    }
+
+    .empty-bookings h2 {
+        margin-top: 0;
+    }
+
+    .empty-bookings p {
+        margin-bottom: 24px;
+        color: var(--muted);
+    }
+
+    @media (max-width: 760px) {
+        .booking-details {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 480px) {
+        .booking-details {
+            grid-template-columns: 1fr;
+        }
+
+        .booking-actions > * {
+            width: 100%;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <header class="bookings-heading">
+        <div>
+            <h1>My bookings</h1>
+            <p>View your reservations and booking history.</p>
+        </div>
+
+        <a class="button button-secondary" href="{% url 'home' %}">
+            Explore events
+        </a>
+    </header>
+
+    <div class="booking-list">
+        {% for booking in bookings %}
+            <article class="card booking-card">
+                <div class="booking-card-header">
+                    <div>
+                        <p class="booking-reference">
+                            Booking #{{ booking.pk }}
+                        </p>
+
+                        <h2>
+                            <a href="{% url 'event_detail' booking.event.pk %}">
+                                {{ booking.event.title }}
+                            </a>
+                        </h2>
+                    </div>
+
+                    <!-- Display the booking's current status. -->
+                    {% if booking.status == "confirmed" %}
+                        <span class="status status-confirmed">
+                            Confirmed
+                        </span>
+                    {% elif booking.status == "cancelled" %}
+                        <span class="status status-cancelled">
+                            Cancelled
+                        </span>
+                    {% else %}
+                        <span class="status">
+                            {{ booking.get_status_display }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <dl class="booking-details">
+                    <div>
+                        <dt>Date and time</dt>
+                        <dd>
+                            <time datetime="{{ booking.event.starts_at|date:'c' }}">
+                                {{ booking.event.starts_at|date:"d M Y" }}
+                                <br>
+                                {{ booking.event.starts_at|date:"g:i A" }}
+                                {{ booking.event.starts_at|date:"T" }}
+                            </time>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Location</dt>
+                        <dd>{{ booking.event.location }}</dd>
+                    </div>
+
+                    <div>
+                        <dt>Tickets</dt>
+                        <dd>{{ booking.quantity }}</dd>
+                    </div>
+
+                    <div>
+                        <!-- Use the price saved when the booking was made. -->
+                        <dt>Price per ticket</dt>
+                        <dd>
+                            {% if booking.unit_price == 0 %}
+                                Free
+                            {% else %}
+                                ₹{{ booking.unit_price|floatformat:2 }}
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+
+                <div class="booking-actions">
+                    <a
+                        class="button button-secondary"
+                        href="{% url 'event_detail' booking.event.pk %}"
+                    >
+                        View event
+                    </a>
+
+                    {% if booking.status == "confirmed" %}
+                        <!-- Open this booking's protected ticket page. -->
+                        <a
+                            class="button"
+                            href="{% url 'booking_ticket' booking.pk %}"
+                        >
+                            View ticket
+                        </a>
+
+                        <!-- The cancellation view checks whether it is allowed. -->
+                        <a
+                            class="button button-secondary"
+                            href="{% url 'booking_cancel' booking.pk %}"
+                        >
+                            Cancel booking
+                        </a>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <section class="card empty-bookings">
+                <h2>No bookings yet</h2>
+
+                <p>
+                    Find an event you like and reserve your place.
+                    Your bookings will appear here.
+                </p>
+
+                <a class="button" href="{% url 'home' %}">
+                    Explore events
+                </a>
+            </section>
+        {% endfor %}
+    </div>
+{% endblock %}

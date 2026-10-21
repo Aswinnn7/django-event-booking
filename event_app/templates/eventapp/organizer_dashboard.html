@@ -1,0 +1,279 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Organizer dashboard | EventBooking{% endblock %}
+
+{% block extra_css %}
+    /* Dashboard heading */
+    .dashboard-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+
+    .dashboard-heading h1 {
+        margin: 0 0 10px;
+        font-size: clamp(2rem, 4vw, 3rem);
+    }
+
+    .dashboard-heading p {
+        margin: 0;
+        color: var(--muted);
+    }
+
+    /* Summary cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0 0 36px;
+    }
+
+    .stat-card {
+        border-top: 4px solid var(--primary);
+    }
+
+    .stat-card dt {
+        color: var(--muted);
+        font-size: 0.95rem;
+    }
+
+    .stat-card dd {
+        margin: 12px 0 0;
+        font-size: 2rem;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+    }
+
+    /* Organizer's event list */
+    .dashboard-events {
+        display: grid;
+        gap: 20px;
+    }
+
+    .dashboard-event-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .dashboard-event-header h3 {
+        margin: 0 0 8px;
+        font-size: 1.4rem;
+    }
+
+    .dashboard-event-header p {
+        margin: 0;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    .event-status {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .status-open {
+        background: #e6f5ed;
+        color: #166534;
+    }
+
+    .status-closed {
+        background: #eef1f6;
+        color: #465267;
+    }
+
+    .status-sold-out {
+        background: #fff1f0;
+        color: #a32424;
+    }
+
+    .dashboard-details {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        margin: 0;
+    }
+
+    .dashboard-details dt {
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .dashboard-details dd {
+        margin: 0;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .dashboard-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+    }
+
+    .empty-dashboard {
+        padding: 40px 24px;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 540px) {
+        .stats-grid,
+        .dashboard-details {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-actions > * {
+            width: 100%;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <header class="dashboard-heading">
+        <div>
+            <h1>Organizer dashboard</h1>
+            <p>Manage your events and review their booking totals.</p>
+        </div>
+
+        <a class="button" href="{% url 'event_create' %}">
+            Create event
+        </a>
+    </header>
+
+    <!-- Totals cover only the logged-in organizer's events. -->
+    <dl class="stats-grid">
+        <div class="card stat-card">
+            <dt>Your events</dt>
+            <dd>{{ total_events }}</dd>
+        </div>
+
+        <div class="card stat-card">
+            <dt>Confirmed bookings</dt>
+            <dd>{{ total_bookings }}</dd>
+        </div>
+
+        <div class="card stat-card">
+            <dt>Tickets reserved</dt>
+            <dd>{{ total_tickets }}</dd>
+        </div>
+
+        <div class="card stat-card">
+            <dt>Cancelled bookings</dt>
+            <dd>{{ total_cancellations }}</dd>
+        </div>
+    </dl>
+
+    <section aria-labelledby="your-events-heading">
+        <h2 id="your-events-heading">Your events</h2>
+
+        <div class="dashboard-events">
+            {% for event in events %}
+                <!-- Calculate remaining seats once for this card. -->
+                {% with seats=event.remaining_seats %}
+                    <article class="card">
+                        <div class="dashboard-event-header">
+                            <div>
+                                <h3>{{ event.title }}</h3>
+                                <p>{{ event.location }}</p>
+                            </div>
+
+                            <!-- Booking status is separate from check-in. -->
+                            {% if event.booking_closed %}
+                                <span class="event-status status-closed">
+                                    Booking closed
+                                </span>
+                            {% elif seats == 0 %}
+                                <span class="event-status status-sold-out">
+                                    Sold out
+                                </span>
+                            {% else %}
+                                <span class="event-status status-open">
+                                    Booking open
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <dl class="dashboard-details">
+                            <div>
+                                <dt>Date and time</dt>
+                                <dd>
+                                    <time datetime="{{ event.starts_at|date:'c' }}">
+                                        {{ event.starts_at|date:"d M Y" }}
+                                        <br>
+                                        {{ event.starts_at|date:"g:i A" }}
+                                        {{ event.starts_at|date:"T" }}
+                                    </time>
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Total capacity</dt>
+                                <dd>{{ event.capacity }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Seats remaining</dt>
+                                <dd>{{ seats }}</dd>
+                            </div>
+                        </dl>
+
+                        <div class="dashboard-actions">
+                            <a
+                                class="button button-secondary"
+                                href="{% url 'event_detail' event.pk %}"
+                            >
+                                View event
+                            </a>
+
+                            <a
+                                class="button button-secondary"
+                                href="{% url 'event_update' event.pk %}"
+                            >
+                                Edit event
+                            </a>
+
+                            <!-- Open the organizer-only check-in page. -->
+                            <a
+                                class="button"
+                                href="{% url 'ticket_check_in' event.pk %}"
+                            >
+                                Check in tickets
+                            </a>
+                        </div>
+                    </article>
+                {% endwith %}
+            {% empty %}
+                <div class="card empty-dashboard">
+                    <h3>You haven't created any events yet</h3>
+
+                    <p class="muted">
+                        Create your first event to start receiving reservations.
+                    </p>
+
+                    <a class="button" href="{% url 'event_create' %}">
+                        Create event
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endblock %}

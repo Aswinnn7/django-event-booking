@@ -1,0 +1,15 @@
+# Private settings
+.env
+.env.*
+!.env.example
+
+# Local databases
+*.sqlite3
+*.sqlite3-*
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+myenv/
+venv/
+.venv/

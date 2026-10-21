@@ -1,0 +1,276 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}{{ event.title }} | EventBooking{% endblock %}
+
+{% block extra_css %}
+    /* Link back to the event list */
+    .back-link {
+        display: inline-block;
+        margin-bottom: 24px;
+        font-weight: 600;
+    }
+
+    /* Event heading */
+    .event-header {
+        padding: 36px;
+        margin-bottom: 28px;
+        border: 1px solid #ddd9fa;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #eeebff, #f0f7ff);
+    }
+
+    .event-label {
+        margin: 0 0 12px;
+        color: var(--primary);
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .event-header h1 {
+        margin: 0 0 16px;
+    }
+
+    .organizer {
+        margin: 0;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    /* Details and booking panels */
+    .detail-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        align-items: start;
+        gap: 24px;
+    }
+
+    .detail-card h2,
+    .booking-panel h2,
+    .management-panel h2 {
+        margin-top: 0;
+        font-size: 1.35rem;
+    }
+
+    .event-description {
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    /* Event information */
+    .event-facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        margin: 28px 0 0;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+    }
+
+    .event-facts dt {
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .event-facts dd {
+        margin: 0;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .booking-panel {
+        border-top: 4px solid var(--primary);
+    }
+
+    .ticket-price {
+        margin: 16px 0 0;
+        font-size: 2rem;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+    }
+
+    .price-note {
+        margin: 0 0 24px;
+        color: var(--muted);
+    }
+
+    .booking-panel .button {
+        width: 100%;
+    }
+
+    .booking-note {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    /* Organizer controls */
+    .management-panel {
+        margin-top: 24px;
+    }
+
+    .management-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    /* Stack panels on smaller screens */
+    @media (max-width: 760px) {
+        .detail-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .event-header {
+            padding: 24px;
+        }
+
+        .event-facts {
+            grid-template-columns: 1fr;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <a class="back-link" href="{% url 'home' %}">
+        &larr; Back to events
+    </a>
+
+    <!-- Event title and organizer -->
+    <header class="event-header">
+        <p class="event-label">Event details</p>
+        <h1>{{ event.title }}</h1>
+
+        <p class="organizer">
+            Organized by
+            <strong>{{ event.organizer.username }}</strong>
+        </p>
+    </header>
+
+    <div class="detail-layout">
+        <!-- Description and event information -->
+        <section class="card detail-card" aria-labelledby="about-heading">
+            <h2 id="about-heading">About this event</h2>
+
+            <div class="event-description">
+                {{ event.description|linebreaks }}
+            </div>
+
+            <dl class="event-facts">
+                <div>
+                    <dt>Location</dt>
+                    <dd>{{ event.location }}</dd>
+                </div>
+
+                <div>
+                    <dt>Date and time</dt>
+                    <dd>
+                        <time datetime="{{ event.starts_at|date:'c' }}">
+                            {{ event.starts_at|date:"d M Y" }}
+                            <br>
+                            {{ event.starts_at|date:"g:i A" }}
+                            {{ event.starts_at|date:"T" }}
+                        </time>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Total capacity</dt>
+                    <dd>{{ event.capacity }} seats</dd>
+                </div>
+
+                <!-- Calculated from capacity minus confirmed tickets. -->
+                <div>
+                    <dt>Seats remaining</dt>
+                    <dd>{{ event.remaining_seats }}</dd>
+                </div>
+            </dl>
+        </section>
+
+        <!-- Price and booking availability -->
+        <aside class="card booking-panel" aria-labelledby="booking-heading">
+            <h2 id="booking-heading">Reserve your place</h2>
+
+            <p class="ticket-price">
+                {% if event.ticket_price == 0 %}
+                    Free
+                {% else %}
+                    ₹{{ event.ticket_price|floatformat:2 }}
+                {% endif %}
+            </p>
+
+            <p class="price-note">Per ticket</p>
+
+            <!-- First check whether the event has started. -->
+            {% if event.booking_closed %}
+                <p class="alert" role="status">
+                    Booking closed — this event has already started.
+                </p>
+
+            <!-- For future events, check whether seats remain. -->
+            {% elif event.remaining_seats == 0 %}
+                <p class="alert" role="status">
+                    Sold out — no seats remaining.
+                </p>
+
+            <!-- Logged-in users can open the booking form. -->
+            {% elif user.is_authenticated %}
+                <a
+                    class="button"
+                    href="{% url 'booking_create' event.pk %}"
+                >
+                    Book this event
+                </a>
+
+            <!-- Other visitors must log in before booking. -->
+            {% else %}
+                <a class="button" href="{% url 'login' %}">
+                    Login to book
+                </a>
+
+                <p class="booking-note">
+                    New here?
+                    <a href="{% url 'register' %}">Create an account</a>
+                    to reserve tickets.
+                </p>
+            {% endif %}
+
+            <p class="booking-note">
+                Reservations are subject to availability.
+                Booking closes when the event starts.
+            </p>
+        </aside>
+    </div>
+
+    <!-- Only the organizer sees these controls.
+         The views also enforce ownership permissions. -->
+    {% if user == event.organizer %}
+        <section class="card management-panel">
+            <h2>Manage your event</h2>
+
+            <p class="muted">
+                Update event details or open the deletion confirmation.
+            </p>
+
+            <div class="management-actions">
+                <a
+                    class="button button-secondary"
+                    href="{% url 'event_update' event.pk %}"
+                >
+                    Edit event
+                </a>
+
+                <a
+                    class="button button-danger"
+                    href="{% url 'event_delete' event.pk %}"
+                >
+                    Delete event
+                </a>
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

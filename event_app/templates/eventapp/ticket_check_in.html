@@ -1,0 +1,121 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Ticket check-in | EventBooking{% endblock %}
+
+{% block extra_css %}
+    .check-in-card {
+        max-width: 700px;
+        margin: 0 auto;
+        border-top: 4px solid var(--primary);
+    }
+
+    .check-in-card h1 {
+        margin: 0 0 12px;
+        font-size: 2rem;
+    }
+
+    .event-name {
+        margin-bottom: 24px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    .check-in-success {
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid #a7d7b8;
+        border-radius: 12px;
+        background: #e6f5ed;
+        color: #166534;
+    }
+
+    .check-in-success h2 {
+        margin-top: 0;
+        font-size: 1.2rem;
+    }
+
+    .check-in-success p {
+        margin: 8px 0;
+        overflow-wrap: anywhere;
+    }
+
+    .check-in-form p {
+        margin-bottom: 20px;
+    }
+
+    .check-in-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    @media (max-width: 480px) {
+        .check-in-actions > * {
+            width: 100%;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <section class="card check-in-card">
+        <h1>Ticket check-in</h1>
+        <p class="event-name">{{ event.title }}</p>
+
+        <!-- Show the result after a successful check-in. -->
+        {% if checked_booking %}
+            <div class="check-in-success" role="status">
+                <h2>Check-in successful</h2>
+
+                <p>
+                    <strong>Booking:</strong>
+                    #{{ checked_booking.pk }}
+                </p>
+
+                <p>
+                    <strong>Booked by:</strong>
+                    {{ checked_booking.user.username }}
+                </p>
+
+                <p>
+                    <strong>Attendees checked in:</strong>
+                    {{ checked_booking.quantity }}
+                </p>
+
+                <p>
+                    <strong>Check-in time:</strong>
+                    {{ checked_booking.checked_in_at|date:"d M Y, g:i A T" }}
+                </p>
+            </div>
+        {% endif %}
+
+        <p class="muted">
+            Use a QR reader to read the ticket code, then paste it below.
+            You can also copy the code from the attendee's ticket page.
+        </p>
+
+        <p class="muted">
+            Checking in admits everyone in this booking together.
+            Confirm that the whole group is present before submitting.
+        </p>
+
+        <!-- Only a POST submission records attendance. -->
+        <form class="check-in-form" method="POST">
+            {% csrf_token %}
+
+            <!-- Show the ticket-code field and validation errors. -->
+            {{ form.as_p }}
+
+            <div class="check-in-actions">
+                <button type="submit">Confirm check-in</button>
+
+                <a
+                    class="button button-secondary"
+                    href="{% url 'organizer_dashboard' %}"
+                >
+                    Back to dashboard
+                </a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

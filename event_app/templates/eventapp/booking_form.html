@@ -1,0 +1,185 @@
+{% extends "eventapp/base.html" %}
+
+{% block title %}Book {{ event.title }} | EventBooking{% endblock %}
+
+{% block extra_css %}
+    .reservation-card {
+        max-width: 680px;
+        margin: 0 auto;
+        border-top: 4px solid var(--primary);
+    }
+
+    .reservation-card h1 {
+        margin: 0 0 12px;
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+    }
+
+    .reservation-intro {
+        margin-bottom: 24px;
+        color: var(--muted);
+    }
+
+    .event-summary {
+        padding: 20px;
+        margin-bottom: 28px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--background);
+    }
+
+    .event-summary h2 {
+        margin: 0 0 16px;
+        font-size: 1.3rem;
+    }
+
+    .summary-details {
+        margin: 0;
+    }
+
+    .summary-details > div {
+        margin-bottom: 16px;
+    }
+
+    .summary-details > div:last-child {
+        margin-bottom: 0;
+    }
+
+    .summary-details dt {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .summary-details dd {
+        margin: 4px 0 0;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    /* Explain the reservation-only behaviour before submission. */
+    .payment-notice {
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
+        border-radius: 10px;
+        background: var(--background);
+    }
+
+    .payment-notice p {
+        margin: 0;
+    }
+
+    .reservation-form p {
+        margin-bottom: 20px;
+    }
+
+    /* Highlight form-level errors such as duplicate bookings. */
+    .reservation-form > .errorlist {
+        padding: 14px 18px 14px 36px;
+        border: 1px solid #f3b8b2;
+        border-radius: 10px;
+        background: #fff1f0;
+    }
+
+    .reservation-note {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .reservation-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 480px) {
+        .reservation-actions > * {
+            width: 100%;
+        }
+    }
+{% endblock %}
+
+{% block content %}
+    <section
+        class="card reservation-card"
+        aria-labelledby="reservation-title"
+    >
+        <h1 id="reservation-title">Reserve your tickets</h1>
+
+        <p class="reservation-intro">
+            Choose how many tickets you would like to book.
+        </p>
+
+        <!-- Show event details before submitting a reservation. -->
+        <div class="event-summary">
+            <h2>{{ event.title }}</h2>
+
+            <dl class="summary-details">
+                <div>
+                    <dt>Location</dt>
+                    <dd>{{ event.location }}</dd>
+                </div>
+
+                <div>
+                    <dt>Date and time</dt>
+                    <dd>
+                        <time datetime="{{ event.starts_at|date:'c' }}">
+                            {{ event.starts_at|date:"d M Y" }}
+                            · {{ event.starts_at|date:"g:i A" }}
+                            {{ event.starts_at|date:"T" }}
+                        </time>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>Price per ticket</dt>
+                    <dd>
+                        {% if event.ticket_price == 0 %}
+                            Free
+                        {% else %}
+                            ₹{{ event.ticket_price|floatformat:2 }}
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Make clear that confirmation does not collect payment. -->
+        <div class="payment-notice" id="payment-notice">
+            <p>
+                <strong>This website reserves tickets only.</strong>
+                No online payment is collected.
+            </p>
+        </div>
+
+        <form
+            class="reservation-form"
+            method="POST"
+            aria-describedby="payment-notice"
+        >
+            {% csrf_token %}
+
+            <!-- Preserve quantity errors and general booking errors. -->
+            {{ form.as_p }}
+
+            <p class="reservation-note">
+                Reservations are subject to availability.
+                Booking closes when the event starts.
+            </p>
+
+            <div class="reservation-actions">
+                <button type="submit">Confirm reservation</button>
+
+                <a
+                    class="button button-secondary"
+                    href="{% url 'event_detail' event.pk %}"
+                >
+                    Back to event
+                </a>
+            </div>
+        </form>
+    </section>
+{% endblock %}
