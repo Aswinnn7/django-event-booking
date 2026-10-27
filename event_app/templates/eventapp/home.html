@@ -75,7 +75,6 @@
         margin: 0;
     }
 
-    /* Space between suggestions and the main event list */
     .recommendations {
         margin-bottom: 40px;
     }
@@ -91,11 +90,46 @@
         gap: 20px;
     }
 
-    .event-card {
+    /* Remove outer padding so covers reach the card edges. */
+    .card.event-card {
         display: flex;
         flex-direction: column;
         min-width: 0;
+        padding: 0;
+        overflow: hidden;
         border-top: 4px solid var(--primary);
+    }
+
+    /* Consistent cover size without stretching the image. */
+    .event-card-image {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        object-position: center;
+        background: var(--background);
+    }
+
+    /* Fallback when an event has no uploaded cover. */
+    .event-image-placeholder {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: linear-gradient(135deg, #eeebff, #dceaff);
+        color: var(--primary);
+        font-size: 1.2rem;
+        font-weight: 800;
+    }
+
+    /* Keep card details padded and footers aligned. */
+    .event-card-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+        padding: 24px;
     }
 
     .event-date {
@@ -222,7 +256,6 @@
                 value="{{ search }}"
             >
 
-            <!-- Display errors affecting the whole filter form. -->
             {{ filter_form.non_field_errors }}
 
             <div class="filter-grid">
@@ -238,7 +271,6 @@
             <div class="search-controls">
                 <button type="submit">Search events</button>
 
-                <!-- Opening home without parameters clears filters. -->
                 <a
                     class="button button-secondary"
                     href="{% url 'home' %}"
@@ -259,7 +291,6 @@
                 <h2 id="recommendations-heading">Suggested events</h2>
             </div>
 
-            <!-- Neutral wording also fits users without booking history. -->
             <p class="recommendation-description">
                 Discover an upcoming event you might enjoy.
             </p>
@@ -267,47 +298,67 @@
             <div class="event-grid">
                 {% for event in recommended_events %}
                     <article class="card event-card">
-                        <p class="event-date">
-                            <time datetime="{{ event.starts_at|date:'c' }}">
-                                {{ event.starts_at|date:"d M Y" }}
-                                · {{ event.starts_at|date:"g:i A" }}
-                            </time>
-                        </p>
-
-                        <h3>
-                            <a
-                                class="event-title"
-                                href="{% url 'event_detail' event.pk %}"
+                        <!-- Check for an image before accessing its URL. -->
+                        {% if event.image %}
+                            <img
+                                class="event-card-image"
+                                src="{{ event.image.url }}"
+                                alt="Cover for {{ event.title }}"
+                                loading="lazy"
+                                decoding="async"
                             >
-                                {{ event.title }}
-                            </a>
-                        </h3>
-
-                        <p class="event-location">
-                            <strong>Location:</strong> {{ event.location }}
-                        </p>
-
-                        <p class="event-description">
-                            {{ event.description|truncatewords:22 }}
-                        </p>
-
-                        <div class="event-card-footer">
-                            <div class="event-price">
-                                {% if event.ticket_price == 0 %}
-                                    Free
-                                {% else %}
-                                    ₹{{ event.ticket_price|floatformat:2 }}
-                                    <span class="price-label">per ticket</span>
-                                {% endif %}
+                        {% else %}
+                            <div
+                                class="event-image-placeholder"
+                                aria-hidden="true"
+                            >
+                                EventBooking
                             </div>
+                        {% endif %}
 
-                            <a
-                                class="button button-secondary"
-                                href="{% url 'event_detail' event.pk %}"
-                                aria-label="View {{ event.title }}"
-                            >
-                                View event
-                            </a>
+                        <div class="event-card-body">
+                            <p class="event-date">
+                                <time datetime="{{ event.starts_at|date:'c' }}">
+                                    {{ event.starts_at|date:"d M Y" }}
+                                    · {{ event.starts_at|date:"g:i A" }}
+                                </time>
+                            </p>
+
+                            <h3>
+                                <a
+                                    class="event-title"
+                                    href="{% url 'event_detail' event.pk %}"
+                                >
+                                    {{ event.title }}
+                                </a>
+                            </h3>
+
+                            <p class="event-location">
+                                <strong>Location:</strong> {{ event.location }}
+                            </p>
+
+                            <p class="event-description">
+                                {{ event.description|truncatewords:22 }}
+                            </p>
+
+                            <div class="event-card-footer">
+                                <div class="event-price">
+                                    {% if event.ticket_price == 0 %}
+                                        Free
+                                    {% else %}
+                                        ₹{{ event.ticket_price|floatformat:2 }}
+                                        <span class="price-label">per ticket</span>
+                                    {% endif %}
+                                </div>
+
+                                <a
+                                    class="button button-secondary"
+                                    href="{% url 'event_detail' event.pk %}"
+                                    aria-label="View {{ event.title }}"
+                                >
+                                    View event
+                                </a>
+                            </div>
                         </div>
                     </article>
                 {% endfor %}
@@ -341,47 +392,66 @@
             <div class="event-grid">
                 {% for event in page_obj %}
                     <article class="card event-card">
-                        <p class="event-date">
-                            <time datetime="{{ event.starts_at|date:'c' }}">
-                                {{ event.starts_at|date:"d M Y" }}
-                                · {{ event.starts_at|date:"g:i A" }}
-                            </time>
-                        </p>
-
-                        <h3>
-                            <a
-                                class="event-title"
-                                href="{% url 'event_detail' event.pk %}"
+                        {% if event.image %}
+                            <img
+                                class="event-card-image"
+                                src="{{ event.image.url }}"
+                                alt="Cover for {{ event.title }}"
+                                loading="lazy"
+                                decoding="async"
                             >
-                                {{ event.title }}
-                            </a>
-                        </h3>
-
-                        <p class="event-location">
-                            <strong>Location:</strong> {{ event.location }}
-                        </p>
-
-                        <p class="event-description">
-                            {{ event.description|truncatewords:22 }}
-                        </p>
-
-                        <div class="event-card-footer">
-                            <div class="event-price">
-                                {% if event.ticket_price == 0 %}
-                                    Free
-                                {% else %}
-                                    ₹{{ event.ticket_price|floatformat:2 }}
-                                    <span class="price-label">per ticket</span>
-                                {% endif %}
+                        {% else %}
+                            <div
+                                class="event-image-placeholder"
+                                aria-hidden="true"
+                            >
+                                EventBooking
                             </div>
+                        {% endif %}
 
-                            <a
-                                class="button button-secondary"
-                                href="{% url 'event_detail' event.pk %}"
-                                aria-label="View {{ event.title }}"
-                            >
-                                View event
-                            </a>
+                        <div class="event-card-body">
+                            <p class="event-date">
+                                <time datetime="{{ event.starts_at|date:'c' }}">
+                                    {{ event.starts_at|date:"d M Y" }}
+                                    · {{ event.starts_at|date:"g:i A" }}
+                                </time>
+                            </p>
+
+                            <h3>
+                                <a
+                                    class="event-title"
+                                    href="{% url 'event_detail' event.pk %}"
+                                >
+                                    {{ event.title }}
+                                </a>
+                            </h3>
+
+                            <p class="event-location">
+                                <strong>Location:</strong> {{ event.location }}
+                            </p>
+
+                            <p class="event-description">
+                                {{ event.description|truncatewords:22 }}
+                            </p>
+
+                            <div class="event-card-footer">
+                                <div class="event-price">
+                                    {% if event.ticket_price == 0 %}
+                                        Free
+                                    {% else %}
+                                        ₹{{ event.ticket_price|floatformat:2 }}
+                                        <span class="price-label">per ticket</span>
+                                    {% endif %}
+                                </div>
+
+                                <a
+                                    class="button button-secondary"
+                                    href="{% url 'event_detail' event.pk %}"
+                                    aria-label="View {{ event.title }}"
+                                >
+                                    View event
+                                </a>
+                            </div>
                         </div>
                     </article>
                 {% endfor %}

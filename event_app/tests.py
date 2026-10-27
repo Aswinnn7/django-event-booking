@@ -2,6 +2,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from decimal import Decimal
 from threading import Barrier
+from io import BytesIO
+from tempfile import TemporaryDirectory
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 
 from django.contrib.auth import get_user_model
 from django.db import connections
@@ -1703,3 +1708,211 @@ class RecommendationTests(TestCase):
             response,
             'id="recommendations-heading"',
         )
+
+
+class EventImageTests(TestCase):
+    """Check cover uploads without changing real events or uploaded files."""
+
+    def setUp(self):
+        # Store uploaded test images in a temporary folder.
+        self.media_directory = TemporaryDirectory()
+        self.addCleanup(self.media_directory.cleanup)
+        media_settings = override_settings(
+            MEDIA_ROOT=self.media_directory.name,
+            MEDIA_URL="/media/",
+        )
+        media_settings.enable()
+        self.addCleanup(media_settings.disable)
+
+        User = get_user_model()
+        self.organizer = User.objects.create_user(username="image_organizer")
+        self.other_user = User.objects.create_user(username="image_other_user")
+        self.event = Event.objects.create(
+            title="Image Test Event",
+            description="An event for testing cover images.",
+            location="Bengaluru",
+            starts_at=timezone.now() + timedelta(days=7),
+            ticket_price=Decimal("100.00"),
+            capacity=10,
+            organizer=self.organizer,
+        )
+        self.create_url = reverse("event_create")
+        self.update_url = reverse("event_update", args=[self.event.pk])
+        self.detail_url = reverse("event_detail", args=[self.event.pk])
+        self.client.force_login(self.organizer)
+
+    def image_upload(self, name="cover.png", image_format="PNG"):
+        # Generate an actual small image instead of using personal photos.
+        buffer = BytesIO()
+        Image.new("RGB", (100, 60), color="navy").save(
+            buffer, format=image_format,
+        )
+        content_types = {
+            "PNG": "image/png",
+            "JPEG": "image/jpeg",
+            "WEBP": "image/webp",
+            "GIF": "image/gif",
+        }
+        return SimpleUploadedFile(
+            name,
+            buffer.getvalue(),
+            content_type=content_types[image_format],
+        )
+
+    def event_data(self, **changes):
+        # Form dates are entered in the project's local timezone.
+        data = {
+            "title": self.event.title,
+            "description": self.event.description,
+            "location": self.event.location,
+            "starts_at": timezone.localtime(self.event.starts_at).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            "ticket_price": "100.00",
+            "capacity": 10,
+        }
+        data.update(changes)
+        return data
+
+    def add_existing_image(self):
+        self.event.image = self.image_upload("original.png")
+        self.event.save(update_fields=["image"])
+        return self.event.image.name
+
+    def test_create_event_accepts_supported_images(self):
+        # Each supported format should survive the complete upload flow.
+        for image_format, extension in (
+            ("JPEG", "jpg"), ("PNG", "png"), ("WEBP", "webp"),
+        ):
+            with self.subTest(image_format=image_format):
+                title = f"Uploaded {image_format} Event"
+                response = self.client.post(
+                    self.create_url,
+                    self.event_data(
+                        title=title,
+                        image=self.image_upload(
+                            f"cover.{extension}", image_format,
+                        ),
+                    ),
+                )
+                self.assertEqual(response.status_code, 302)
+                event = Event.objects.get(title=title)
+                self.assertEqual(event.organizer, self.organizer)
+                self.assertTrue(event.image)
+                self.assertTrue(event.image.storage.exists(event.image.name))
+                with event.image.open("rb") as saved_file:
+                    with Image.open(saved_file) as saved_image:
+                        self.assertEqual(saved_image.format, image_format)
+                        saved_image.verify()
+
+    def test_create_event_without_image_is_allowed(self):
+        response = self.client.post(
+            self.create_url,
+            self.event_data(title="Event Without Image"),
+        )
+        self.assertEqual(response.status_code, 302)
+        event = Event.objects.get(title="Event Without Image")
+        self.assertFalse(event.image)
+
+    def test_organizer_can_replace_image(self):
+        original_name = self.add_existing_image()
+        response = self.client.post(
+            self.update_url,
+            self.event_data(image=self.image_upload("replacement.png")),
+        )
+        self.assertRedirects(response, self.detail_url)
+        self.event.refresh_from_db()
+        self.assertNotEqual(self.event.image.name, original_name)
+        self.assertTrue(
+            self.event.image.storage.exists(self.event.image.name)
+        )
+
+    def test_edit_without_upload_keeps_existing_image(self):
+        original_name = self.add_existing_image()
+        response = self.client.post(
+            self.update_url,
+            self.event_data(title="Updated Image Event"),
+        )
+        self.assertRedirects(response, self.detail_url)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.image.name, original_name)
+
+    def test_organizer_can_clear_image(self):
+        self.add_existing_image()
+        response = self.client.post(
+            self.update_url,
+            self.event_data(**{"image-clear": "on"}),
+        )
+        self.assertRedirects(response, self.detail_url)
+        self.event.refresh_from_db()
+        # Clearing removes the database reference, not necessarily the file.
+        self.assertFalse(self.event.image)
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'class="event-cover"')
+
+    def test_invalid_and_unsupported_images_are_rejected(self):
+        uploads = [
+            SimpleUploadedFile(
+                "fake.png", b"This is text, not an image.",
+                content_type="image/png",
+            ),
+            self.image_upload("unsupported.gif", "GIF"),
+        ]
+        for upload in uploads:
+            with self.subTest(filename=upload.name):
+                response = self.client.post(
+                    self.create_url,
+                    self.event_data(title="Rejected Image Event", image=upload),
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("image", response.context["form"].errors)
+                self.assertFalse(
+                    Event.objects.filter(title="Rejected Image Event").exists()
+                )
+
+    def test_image_over_five_mb_is_rejected(self):
+        # A valid PNG with trailing padding exceeds the upload size limit.
+        image_bytes = self.image_upload().read()
+        oversized = SimpleUploadedFile(
+            "large.png",
+            image_bytes + b"\0" * (5 * 1024 * 1024),
+            content_type="image/png",
+        )
+        response = self.client.post(
+            self.create_url,
+            self.event_data(title="Oversized Image Event", image=oversized),
+        )
+        self.assertContains(response, "The image must be 5 MB or smaller.")
+        self.assertFalse(
+            Event.objects.filter(title="Oversized Image Event").exists()
+        )
+
+    def test_other_user_cannot_replace_event_image(self):
+        original_name = self.add_existing_image()
+        self.client.force_login(self.other_user)
+        response = self.client.post(
+            self.update_url,
+            self.event_data(image=self.image_upload("unauthorized.png")),
+        )
+        self.assertEqual(response.status_code, 404)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.image.name, original_name)
+
+    def test_image_displays_on_detail_and_both_home_lists(self):
+        self.add_existing_image()
+        image_source = f'src="{self.event.image.url}"'
+        response = self.client.get(self.detail_url)
+        self.assertContains(response, image_source, count=1)
+        # This sole available event appears in suggestions and the main list.
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, image_source, count=2)
+
+    def test_event_without_image_displays_fallback(self):
+        response = self.client.get(reverse("home"))
+        self.assertContains(
+            response, 'class="event-image-placeholder"', count=2,
+        )
+        response = self.client.get(self.detail_url)
+        self.assertContains(response, self.event.title)
+        self.assertNotContains(response, 'class="event-cover"')

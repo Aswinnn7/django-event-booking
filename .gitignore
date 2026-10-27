@@ -13,3 +13,6 @@ __pycache__/
 myenv/
 venv/
 .venv/
+
+# User-uploaded files
+media/

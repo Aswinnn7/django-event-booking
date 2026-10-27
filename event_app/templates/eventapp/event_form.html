@@ -30,6 +30,26 @@
 
     .event-form p {
         margin-bottom: 24px;
+        overflow-wrap: anywhere;
+    }
+
+    /* Keep the file picker inside the form on small screens. */
+    .event-form input[type="file"] {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Keep Django's image-clear checkbox compact. */
+    .event-form input[type="checkbox"] {
+        width: auto;
+        min-height: auto;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+
+    .event-form input[type="checkbox"] + label {
+        display: inline;
     }
 
     .form-actions {
@@ -65,10 +85,15 @@
             {% endif %}
         </header>
 
-        <form class="event-form" method="POST">
+        <!-- Multipart encoding allows image files to be submitted. -->
+        <form
+            class="event-form"
+            method="POST"
+            enctype="multipart/form-data"
+        >
             {% csrf_token %}
 
-            <!-- Keep Django's fields, help text and validation errors. -->
+            <!-- Display fields, image upload, help text and errors. -->
             {{ form.as_p }}
 
             <div class="form-actions">

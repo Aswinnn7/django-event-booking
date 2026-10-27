@@ -10,13 +10,25 @@
         font-weight: 600;
     }
 
-    /* Event heading */
+    /* Event heading and optional cover */
     .event-header {
-        padding: 36px;
         margin-bottom: 28px;
         border: 1px solid #ddd9fa;
         border-radius: 20px;
+        overflow: hidden;
         background: linear-gradient(135deg, #eeebff, #f0f7ff);
+    }
+
+    .event-cover {
+        display: block;
+        width: 100%;
+        height: clamp(200px, 35vw, 400px);
+        object-fit: cover;
+        object-position: center;
+    }
+
+    .event-header-content {
+        padding: 36px;
     }
 
     .event-label {
@@ -30,6 +42,7 @@
 
     .event-header h1 {
         margin: 0 0 16px;
+        overflow-wrap: anywhere;
     }
 
     .organizer {
@@ -125,7 +138,7 @@
     }
 
     @media (max-width: 480px) {
-        .event-header {
+        .event-header-content {
             padding: 24px;
         }
 
@@ -140,15 +153,27 @@
         &larr; Back to events
     </a>
 
-    <!-- Event title and organizer -->
+    <!-- Event cover, title and organizer -->
     <header class="event-header">
-        <p class="event-label">Event details</p>
-        <h1>{{ event.title }}</h1>
+        <!-- Check for an image before accessing its URL. -->
+        {% if event.image %}
+            <img
+                class="event-cover"
+                src="{{ event.image.url }}"
+                alt="Cover for {{ event.title }}"
+            >
+        {% endif %}
 
-        <p class="organizer">
-            Organized by
-            <strong>{{ event.organizer.username }}</strong>
-        </p>
+        <!-- Without an image, the gradient header still displays. -->
+        <div class="event-header-content">
+            <p class="event-label">Event details</p>
+            <h1>{{ event.title }}</h1>
+
+            <p class="organizer">
+                Organized by
+                <strong>{{ event.organizer.username }}</strong>
+            </p>
+        </div>
     </header>
 
     <div class="detail-layout">
@@ -183,7 +208,7 @@
                     <dd>{{ event.capacity }} seats</dd>
                 </div>
 
-                <!-- Calculated from capacity minus confirmed tickets. -->
+                <!-- Capacity minus confirmed tickets. -->
                 <div>
                     <dt>Seats remaining</dt>
                     <dd>{{ event.remaining_seats }}</dd>

@@ -10,6 +10,15 @@ class Event(models.Model):
     # Basic event details.
     title = models.CharField(max_length=200)
     description = models.TextField()
+
+    # Optional cover image.
+    # Existing events can remain without an image.
+    # Files are stored inside MEDIA_ROOT/event_images/.
+    image = models.ImageField(
+        upload_to="event_images/",
+        blank=True,
+    )
+
     location = models.CharField(max_length=200)
     starts_at = models.DateTimeField()
 

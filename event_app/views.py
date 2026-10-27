@@ -108,7 +108,8 @@ def event_detail(request, pk):
 @login_required
 def event_create(request):
     if request.method == "POST":
-        form = EventForm(request.POST)
+        # Receive text fields and any uploaded cover image.
+        form = EventForm(request.POST, request.FILES)
 
         if form.is_valid():
             # Set the logged-in user as the organizer.
@@ -139,7 +140,13 @@ def event_update(request, pk):
     )
 
     if request.method == "POST":
-        form = EventForm(request.POST, instance=event)
+        # Receive text fields and an optional replacement image.
+        # The form also supports clearing the current image.
+        form = EventForm(
+            request.POST,
+            request.FILES,
+            instance=event,
+        )
 
         if form.is_valid():
             # Cancelled bookings do not use seats.
